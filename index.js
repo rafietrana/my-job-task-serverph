@@ -38,12 +38,19 @@ run().catch(console.dir);
 app.get("/getProduct", async (req, res) => {
   const page = parseInt(req.query.page);
   const size = parseInt(req.query.size);
-  const searchQuery = req.query.search || ""; // Get search query
+  const searchQuery = req.query.search || "";
+  const brandFilter = req.query.brand || "";
+  const categoryFilter = req.query.category || "";
+  const priceMin = parseInt(req.query.priceMin) || 0;
+  const priceMax = parseInt(req.query.priceMax) || 10000;
 
   try {
-    const query = searchQuery
-      ? { name: { $regex: searchQuery, $options: 'i' } } // Case-insensitive search
-      : {};
+    const query = {
+      ...(searchQuery && { name: { $regex: searchQuery, $options: 'i' } }),
+      ...(brandFilter && { brand: { $regex: brandFilter, $options: 'i' } }),
+      ...(categoryFilter && { category: { $regex: categoryFilter, $options: 'i' } }),
+      price: { $gte: priceMin, $lte: priceMax }
+    };
 
     const products = await productCollection
       .find(query)
