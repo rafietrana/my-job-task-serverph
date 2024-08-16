@@ -43,17 +43,34 @@ app.get("/getProduct", async (req, res) => {
   const categoryFilter = req.query.category || "";
   const priceMin = parseInt(req.query.priceMin) || 0;
   const priceMax = parseInt(req.query.priceMax) || 10000;
+  const sortOption = req.query.sort || "priceLowToHigh"; // Default sorting option
+
+  const query = {
+    ...(searchQuery && { name: { $regex: searchQuery, $options: 'i' } }),
+    ...(brandFilter && { brand: { $regex: brandFilter, $options: 'i' } }),
+    ...(categoryFilter && { category: { $regex: categoryFilter, $options: 'i' } }),
+    price: { $gte: priceMin, $lte: priceMax }
+  };
+
+  let sort;
+  switch (sortOption) {
+    case "priceLowToHigh":
+      sort = { price: 1 };
+      break;
+    case "priceHighToLow":
+      sort = { price: -1 };
+      break;
+    case "dateNewestFirst":
+      sort = { dateAdded: -1 }; // Assuming you have a dateAdded field
+      break;
+    default:
+      sort = { price: 1 };
+  }
 
   try {
-    const query = {
-      ...(searchQuery && { name: { $regex: searchQuery, $options: 'i' } }),
-      ...(brandFilter && { brand: { $regex: brandFilter, $options: 'i' } }),
-      ...(categoryFilter && { category: { $regex: categoryFilter, $options: 'i' } }),
-      price: { $gte: priceMin, $lte: priceMax }
-    };
-
     const products = await productCollection
       .find(query)
+      .sort(sort)
       .skip(page * size)
       .limit(size)
       .toArray();
