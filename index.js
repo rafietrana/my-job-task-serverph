@@ -1,16 +1,26 @@
+require("dotenv").config(); // Ensure environment variables are loaded
+
 const express = require("express");
 const app = express();
 const cors = require("cors");
 const port = 3000;
 
 // middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://job-task-a42d5.web.app",
+      "https://job-task-a42d5.firebaseapp.com",
+    ],
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // mongodb setup
 const { MongoClient, ServerApiVersion } = require("mongodb");
-const uri =
-  "mongodb+srv://job-task-databasepb:OMA7AxSXveZ7OVAp@cluster0.hv89ofo.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.hv89ofo.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -20,11 +30,12 @@ const client = new MongoClient(uri, {
   },
 });
 
+let productCollection;
+
 async function run() {
   try {
     await client.connect();
     productCollection = client.db("productDB").collection("product");
-    await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
@@ -36,20 +47,22 @@ async function run() {
 run().catch(console.dir);
 
 app.get("/getProduct", async (req, res) => {
-  const page = parseInt(req.query.page);
-  const size = parseInt(req.query.size);
+  const page = parseInt(req.query.page) || 0;
+  const size = parseInt(req.query.size) || 10;
   const searchQuery = req.query.search || "";
   const brandFilter = req.query.brand || "";
   const categoryFilter = req.query.category || "";
   const priceMin = parseInt(req.query.priceMin) || 0;
   const priceMax = parseInt(req.query.priceMax) || 10000;
-  const sortOption = req.query.sort || "priceLowToHigh"; // Default sorting option
+  const sortOption = req.query.sort || "priceLowToHigh";
 
   const query = {
-    ...(searchQuery && { name: { $regex: searchQuery, $options: 'i' } }),
-    ...(brandFilter && { brand: { $regex: brandFilter, $options: 'i' } }),
-    ...(categoryFilter && { category: { $regex: categoryFilter, $options: 'i' } }),
-    price: { $gte: priceMin, $lte: priceMax }
+    ...(searchQuery && { name: { $regex: searchQuery, $options: "i" } }),
+    ...(brandFilter && { brand: { $regex: brandFilter, $options: "i" } }),
+    ...(categoryFilter && {
+      category: { $regex: categoryFilter, $options: "i" },
+    }),
+    price: { $gte: priceMin, $lte: priceMax },
   };
 
   let sort;
@@ -61,7 +74,7 @@ app.get("/getProduct", async (req, res) => {
       sort = { price: -1 };
       break;
     case "dateNewestFirst":
-      sort = { dateAdded: -1 }; // Assuming you have a dateAdded field
+      sort = { dateAdded: -1 };
       break;
     default:
       sort = { price: 1 };
@@ -79,9 +92,10 @@ app.get("/getProduct", async (req, res) => {
 
     res.send({
       products,
-      totalCount
+      totalCount,
     });
   } catch (error) {
+    console.error("Error fetching products:", error);
     res.status(500).send({ message: error.message });
   }
 });
@@ -91,12 +105,13 @@ app.get("/productcount", async (req, res) => {
     const count = await productCollection.estimatedDocumentCount();
     res.send({ count });
   } catch (error) {
+    console.error("Error fetching product count:", error);
     res.status(500).send({ message: error.message });
   }
 });
 
 app.get("/", (req, res) => {
-  res.send("Alhamdulillah, your server is now working, Mashallah.");
+  res.send("Alhamdulillahhhhh, your server is now working, Mashallah.");
 });
 
 app.listen(port, () => {
